@@ -38,5 +38,13 @@ const movieController = {
       res.status(500).json({ status: "error", message: error.message });
     }
   },
+  getPopularMovies: async (req, res) => {
+    try {
+      const movies = await Movie.getTopRevenue();
+      res.json({ status: "success", data: movies });
+    } catch (error) {
+      res.status(500).json({ status: "error", message: error.message });
+    }
+  },
 };
 module.exports = movieController;

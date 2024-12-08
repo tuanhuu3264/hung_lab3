@@ -1,13 +1,9 @@
-const fetch = require("node-fetch");
-
+const db = require("../db-provider.js");
 class Movie {
   async getAll() {
     try {
-      const response = await fetch(`http://matuan.online:2422/api/Movies`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      return await response.json();
+      const movies = await db.any("SELECT * FROM movie");
+      return movies;
     } catch (error) {
       console.error("Error fetching movies:", error);
       throw new Error("Failed to fetch movies.");
@@ -16,17 +12,12 @@ class Movie {
 
   async getById(id) {
     try {
-      const response = await fetch("http://matuan.online:2422/api/Movies");
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const movies = await response.json();
-      const movie = movies.find((movie) => movie.id === id);
-
+      const movie = await db.oneOrNone("SELECT * FROM movie WHERE id = $1", [
+        id,
+      ]);
       if (!movie) {
         throw new Error(`Movie with ID ${id} not found.`);
       }
-
       return movie;
     } catch (error) {
       console.error(`Error fetching movie with ID ${id}:`, error);
@@ -36,11 +27,10 @@ class Movie {
 
   async getTopRated() {
     try {
-      const response = await fetch(`http://matuan.online:2422/api/Top50Movies`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      return await response.json();
+      const movies = await db.any(
+        "SELECT * FROM movie ORDER BY im_db_rating DESC LIMIT 50"
+      );
+      return movies;
     } catch (error) {
       console.error("Error fetching top-rated movies:", error);
       throw new Error("Failed to fetch top-rated movies.");
@@ -49,16 +39,28 @@ class Movie {
 
   async getTopRevenue() {
     try {
-      const response = await fetch(
-        `http://matuan.online:2422/api/MostPopularMovies`
+      const movies = await db.any(
+        `SELECT * 
+       FROM movies
+       ORDER BY CAST(REPLACE(REPLACE(cumulativeWorldwideGross, '$', ''), ',', '') AS NUMERIC) DESC
+       LIMIT 50`
       );
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      return await response.json();
+      return movies;
     } catch (error) {
       console.error("Error fetching top-revenue movies:", error);
       throw new Error("Failed to fetch top-revenue movies.");
+    }
+  }
+
+  async getPopular() {
+    try {
+      const movies = await db.any(
+        "SELECT * FROM movies WHERE popularity > 50 ORDER BY popularity DESC LIMIT 50"
+      );
+      return movies;
+    } catch (error) {
+      console.error("Error fetching popular movies:", error);
+      throw new Error("Failed to fetch popular movies.");
     }
   }
 }
