@@ -1,27 +1,55 @@
-function renderTemplate(template, data) {
-  template = template.replace(/{(\w+)}/g, (match, key) => {
-    return data[key] !== undefined ? data[key] : match;
-  });
+module.exports = {
+  render: function (template, data) {
+    template = this.replaceVariables(template, data);
 
-  template = template.replace(
-    /{if (\w+)}([\s\S]*?){else}([\s\S]*?){\/if}/g,
-    (match, condition, trueContent, falseContent) => {
-      return data[condition] ? trueContent : falseContent;
-    }
-  );
+    template = this.handleIf(template, data);
 
-  template = template.replace(
-    /{for (\w+) in (\w+)}([\s\S]*?){\/for}/g,
-    (match, item, array, loopContent) => {
-      if (Array.isArray(data[array])) {
-        return data[array]
-          .map((element) =>
-            renderTemplate(loopContent, { ...data, [item]: element })
-          )
+    template = this.handleFor(template, data);
+
+    template = this.handleCalculation(template, data);
+
+    return template;
+  },
+  replaceVariables: function (template, data) {
+    return template.replace(/<20488>{(.*?)}/g, (match, variable) => {
+      return data[variable.trim()] || match;
+    });
+  },
+
+  handleIf: function (template, data) {
+    return template
+      .replace(/<20488>{if (.*?)\s*}/g, (match, condition) => {
+        const conditionResult = eval(condition);
+        return conditionResult
+          ? match.split("{else)")[0]
+          : match.split("{else)")[1];
+      })
+      .replace(/{\/if}/g, "");
+  },
+
+  handleFor: function (template, data) {
+    return template.replace(
+      /<20488>\(for (.*?) in (.*?)\)/g,
+      (match, variable, arrayName) => {
+        const array = data[arrayName.trim()];
+        return array
+          .map((item) => {
+            return match.replace(/{\/for}/g, "").replace(/{.*?}/g, (key) => {
+              return item[key.replace(/[{}]/g, "").trim()] || key;
+            });
+          })
           .join("");
       }
-      return "";
-    }
-  );
-  return template;
-}
+    );
+  },
+
+  handleCalculation: function (template, data) {
+    return template.replace(/<20488>{(.*?)}/g, (match, expression) => {
+      try {
+        return eval(expression);
+      } catch (e) {
+        return match;
+      }
+    });
+  },
+};
